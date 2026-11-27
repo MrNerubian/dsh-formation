@@ -1,6 +1,6 @@
 {
   "name": "dsh-formation",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "private": true,
   "description": "DSH 编队设置：工作区级多角色交付模式，编制即并发上限（编制 / 授权 / 自测 / 诊断 / 日志）",
   "license": "MIT",

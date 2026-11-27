@@ -128,7 +128,7 @@ const RULES = {
   pm:{label:"项目经理",min:1,max:6,hint:"按领域切分，一个 PM 带一组执行"},
   worker:{label:"执行工程师",min:1,max:40,hint:"并发上限，不是每轮固定人数；实际人数按任务量钳制"},
   verifier:{label:"独立校验",min:1,max:8,hint:"并发上限；每个任务必须有独立校验员，配比建议 1:5~1:7"},
-  max_tasks:{label:"单次拆解上限",min:1,max:40,hint:"必须 ≥ 执行工程师数，否则多出来的空转"}
+  max_tasks:{label:"单次拆解上限",min:1,max:40,hint:"必须 ≥ 执行上限，否则多出的槽位永远用不上"}
 };
 const API = "/dsh-formation/api";
 let cfg = {};
@@ -169,7 +169,7 @@ function preview(){
   const c = collect(), w = c.worker || 0, m = c.max_tasks || 0, v = c.verifier || 1, p = c.pm || 1;
   const gate = c.requirement_gate || 1;
   let s;
-  if (m < w) s = "<span class='e'>⚠ 拆解上限 " + m + " < 执行 " + w + "：" + (w - m) + " 个会空转</span>";
+  if (m < w) s = "<span class='w'>⚠ 拆解上限 " + m + " < 执行上限 " + w + "：" + (w - m) + " 个槽位永远用不上</span>";
   else if (w / v > 7) s = "<span class='w'>⚠ 校验配比 1:" + (w / v).toFixed(1) + " 偏松，建议 1:5~1:7</span>";
   else if (p > w) s = "<span class='w'>⚠ 项目经理多于执行工程师</span>";
   else s = "<span class='s'>✓ 配置自洽</span>";
