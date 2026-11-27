@@ -1,0 +1,57 @@
+{
+  "name": "dsh-formation",
+  "version": "0.12.3",
+  "private": true,
+  "description": "DSH 编队设置：工作区级多角色交付模式，编制即并发上限（编制 / 授权 / 自测 / 诊断 / 日志）",
+  "license": "MIT",
+  "author": "奈幽 (MrNerubian) <https://github.com/MrNerubian>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrNerubian/dsh-formation.git"
+  },
+  "homepage": "https://github.com/MrNerubian/dsh-formation#readme",
+  "bugs": {
+    "url": "https://github.com/MrNerubian/dsh-formation/issues"
+  },
+  "type": "module",
+  "main": "./lib/index.mjs",
+  "exports": {
+    ".": "./lib/index.mjs",
+    "./client": "./client/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client",
+    "ui",
+    "docs",
+    "cordis.patch.yml"
+  ],
+  "scripts": {
+    "check": "node --check lib/index.mjs && node --check client/client.js",
+    "test": "node test/smoke.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "workbench",
+    "multi-agent",
+    "orchestration"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "dsh-desktop-workbenches"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

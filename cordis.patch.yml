@@ -1,0 +1,4 @@
+# dsh bundle patch: 把编队工作台插进 profile 的插件层
+- insert:
+    - id: dsh-formation
+      name: 'dsh-formation'

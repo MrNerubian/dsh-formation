@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>编队设置</title>
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#262b36;--fg:#e6e9ef;--mut:#8b93a7;--ok:#3fb950;--bad:#f85149;--warn:#d29922;--acc:#4c8dff}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:820px;margin:0 auto;padding:28px 24px 56px}
+  header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  h1{font-size:19px;margin:0}
+  .logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#4c8dff,#7b5cff)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;background:#1f2530;color:var(--mut);border:1px solid var(--line)}
+  .sub{color:var(--mut);font-size:13px}
+  .lead{margin:0 0 20px;color:var(--mut);font-size:13px;line-height:1.8}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+  .card h2{font-size:13px;margin:0 0 4px;color:var(--fg);font-weight:600}
+  .card .desc{color:var(--mut);font-size:12px;margin:0 0 12px}
+  .row{display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row label{flex:1}
+  .row .hint{color:var(--mut);font-size:12px}
+  .row input{width:92px;background:#0b0d12;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 9px;text-align:center}
+  .row input:focus{outline:none;border-color:var(--acc)}
+  .fixed{background:#0b0d12;border:1px dashed var(--line);border-radius:6px;padding:7px 0;width:92px;text-align:center;color:var(--mut)}
+  .bar{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  button{background:var(--acc);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:14px;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #msg{margin-top:12px;font-size:13px;white-space:pre-wrap}
+  .e{color:var(--bad)} .w{color:var(--warn)} .s{color:var(--ok)}
+  .sum{margin-top:14px;padding:11px;border:1px solid var(--line);border-radius:8px;background:#0b0d12;font-size:13px;color:var(--mut)}
+  .sum b{color:var(--fg)}
+  .on{color:var(--ok);border-color:#2a4536!important}
+  .path{color:var(--mut);font-size:12px;word-break:break-all}
+  .console{background:#0b0d12;border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+    font:12px/1.55 ui-monospace,Consolas,"Courier New",monospace;color:var(--mut);
+    white-space:pre-wrap;word-break:break-all;max-height:320px;overflow:auto;margin:10px 0 0}
+  .console .lv-info{color:#7fb2ff} .console .lv-warn{color:var(--warn)} .console .lv-error{color:var(--bad)}
+  .console .t{color:#5a6273}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"></div>
+    <h1>编队设置</h1>
+    <span class="badge">工作区级模式</span>
+  </header>
+
+  <p class="lead">
+    本页负责定编制、给授权；自测、诊断、日志用于验证与排查。<br>
+    开启编队的工作区，其下的<b>所有会话</b>都按「沟通 → 确认 → 拆解 → 派发 → 校验」走交付闭环；关闭即退回 DSH 默认方式。
+  </p>
+
+  <div class="card">
+    <h2>编制</h2>
+    <p class="desc">这里的数字是<b>并发上限</b>，不是每轮固定要派的人数：幕僚长按本批任务量申报，插件按「下限 ≤ 申报 ≤ 上限」钳制后才是实际人数。改完下一轮会话生效，不用重启。</p>
+    <div id="form"></div>
+    <div class="sum" id="sum"></div>
+    <div class="bar">
+      <button id="save">保存编制</button>
+      <button class="ghost" id="reload">放弃修改</button>
+      <span class="sub" id="saved"></span>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2>工作区授权</h2>
+    <p class="desc">默认全部关闭。只有打开的工作区才会注入编队协议。</p>
+    <div id="ws"><div class="sub">读取工作区中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>效果自测</h2>
+    <p class="desc">
+      出一道三步计算题，由插件直接编排：1 个幕僚长拆解 → 3 个执行子代理并行算 → 1 个校验子代理独立复算。<br>
+      <b>跑一次约 1~3 分钟，会真实消耗 5 次模型调用。</b>
+      判据：结果 = 1423、校验通过、加速比 &gt; 1（说明真的并行）。
+    </p>
+    <div class="row" style="border-bottom:0;padding-top:0">
+      <label>在哪个工作区测<div class="hint">只能选已启用编队的工作区</div></label>
+      <select id="testWs" style="background:#0b0d12;border:1px solid var(--line);color:var(--fg);border-radius:6px;padding:7px 9px;min-width:200px"></select>
+    </div>
+    <div class="bar" style="margin-top:10px">
+      <button id="testBtn">开始自测</button>
+      <span class="sub" id="testAt"></span>
+    </div>
+    <div class="console" id="testOut">点「开始自测」运行。</div>
+    <div class="bar" style="margin-top:8px">
+      <span class="sub" id="histInfo" style="margin:0">历史自测会话：读取中…</span>
+      <button class="ghost" id="cleanBtn">清理</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>诊断</h2>
+    <p class="desc">插件是否装好、配置能否读、工作区开关是否真的落到注入上。</p>
+    <div class="bar" style="margin-top:0">
+      <button class="ghost" id="diagBtn">刷新诊断</button>
+      <span class="sub" id="diagAt"></span>
+    </div>
+    <div class="console" id="diagOut">点「刷新诊断」获取当前状态。</div>
+  </div>
+
+  <div class="card">
+    <h2>日志</h2>
+    <p class="desc">插件最近的事件：注册、装配、开关变更、错误。最多保留 400 条。</p>
+    <div class="bar" style="margin-top:0">
+      <button class="ghost" id="logBtn">刷新日志</button>
+      <label class="sub" style="display:flex;gap:6px;align-items:center;cursor:pointer">
+        <input type="checkbox" id="logAuto"> 自动刷新（5s）
+      </label>
+      <span class="sub" id="logAt"></span>
+    </div>
+    <div class="console" id="logOut">点「刷新日志」查看。</div>
+  </div>
+</div>
+
+<script>
+const RULES = {
+  requirement_gate:{label:"需求沟通官",min:1,max:1,hint:"固定 1 个：多个沟通官会各自理解成不同需求",fixed:true},
+  chief:{label:"幕僚长",min:1,max:2,hint:"全局调度者，建议唯一"},
+  pm:{label:"项目经理",min:1,max:6,hint:"按领域切分，一个 PM 带一组执行"},
+  worker:{label:"执行工程师",min:1,max:40,hint:"并发上限，不是每轮固定人数；实际人数按任务量钳制"},
+  verifier:{label:"独立校验",min:1,max:8,hint:"并发上限；每个任务必须有独立校验员，配比建议 1:5~1:7"},
+  max_tasks:{label:"单次拆解上限",min:1,max:40,hint:"必须 ≥ 执行工程师数，否则多出来的空转"}
+};
+const API = "/dsh-formation/api";
+let cfg = {};
+let workspaces = [];
+
+const get = async (p) => (await fetch(API + p)).json();
+const post = async (p, b) => (await fetch(API + p, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(b)})).json();
+
+function renderForm(){
+  const f = document.getElementById("form"); f.innerHTML = "";
+  for (const k in RULES){
+    const ru = RULES[k];
+    const row = document.createElement("div"); row.className = "row";
+    row.innerHTML = "<label>" + ru.label + "<div class='hint'>" + ru.hint + "</div></label>" +
+      (ru.fixed ? "<div class='fixed' id='i_" + k + "'>" + cfg[k] + "</div>"
+                : "<input type='number' id='i_" + k + "' min='" + ru.min + "' max='" + ru.max + "' value='" + cfg[k] + "'>");
+    f.appendChild(row);
+    const inp = row.querySelector("input");
+    if (inp) inp.addEventListener("input", preview);
+  }
+  preview();
+}
+
+function collect(){
+  const o = {};
+  for (const k in RULES){
+    const el = document.getElementById("i_" + k);
+    if (!el){ continue }
+    // 固定值那一格是 div，没有 .value，必须读 textContent，否则得到 NaN
+    const raw = el.tagName === "INPUT" ? el.value : (el.textContent || "").trim();
+    const n = parseInt(raw, 10);
+    o[k] = Number.isFinite(n) ? n : undefined;
+  }
+  return o;
+}
+
+function preview(){
+  const c = collect(), w = c.worker || 0, m = c.max_tasks || 0, v = c.verifier || 1, p = c.pm || 1;
+  const gate = c.requirement_gate || 1;
+  let s;
+  if (m < w) s = "<span class='e'>⚠ 拆解上限 " + m + " < 执行 " + w + "：" + (w - m) + " 个会空转</span>";
+  else if (w / v > 7) s = "<span class='w'>⚠ 校验配比 1:" + (w / v).toFixed(1) + " 偏松，建议 1:5~1:7</span>";
+  else if (p > w) s = "<span class='w'>⚠ 项目经理多于执行工程师</span>";
+  else s = "<span class='s'>✓ 配置自洽</span>";
+  document.getElementById("sum").innerHTML =
+    "编制上限：<b>" + gate + "</b> 沟通 · <b>" + c.chief + "</b> 幕僚长 · <b>" + c.pm +
+    "</b> PM · <b>" + c.worker + "</b> 执行 · <b>" + c.verifier + "</b> 校验，拆解上限 <b>" +
+    c.max_tasks + "</b> 条<br><span style='font-size:12px'>实际派几人由幕僚长按任务量申报，插件钳制在上限内</span><br>" + s;
+}
+
+document.getElementById("save").onclick = async () => {
+  const btn = document.getElementById("save"); btn.disabled = true;
+  const msg = document.getElementById("msg");
+  try{
+    const j = await post("/config", collect());
+    if (j.ok){
+      cfg = j.config;
+      msg.innerHTML = "<span class='s'>✓ 已保存（下一轮会话生效）</span>" +
+        ((j.warnings && j.warnings.length) ? "<br>" + j.warnings.map(x => "<span class='w'>⚠ " + x + "</span>").join("<br>") : "");
+      document.getElementById("saved").textContent = "保存于 " + new Date().toLocaleTimeString();
+      renderForm();
+    } else {
+      msg.innerHTML = j.errors.map(x => "<span class='e'>✗ " + esc(x) + "</span>").join("<br>");
+    }
+  } catch(e){ msg.innerHTML = "<span class='e'>✗ 保存失败：" + esc(e) + "</span>"; }
+  finally{ btn.disabled = false; }
+};
+
+document.getElementById("reload").onclick = load;
+
+async function loadWorkspaces(){
+  const box = document.getElementById("ws");
+  try{
+    const j = await get("/workspaces");
+    workspaces = j.workspaces || [];
+    if (!workspaces.length){ box.innerHTML = "<div class='sub'>没有读到工作区注册表。</div>"; return; }
+    box.innerHTML = workspaces.map(w =>
+      "<div class='row'>" +
+        "<label>" + esc(w.title) + "<div class='path'>" + esc(w.path || "") + " · " + w.sessionCount + " 个会话</div></label>" +
+        "<button class='ghost " + (w.enabled ? "on" : "") + "' data-ws='" + esc(w.id) + "' data-on='" + (w.enabled ? "1" : "0") + "'>" +
+          (w.enabled ? "已启用编队" : "未启用") + "</button>" +
+      "</div>"
+    ).join("");
+    box.querySelectorAll("button[data-ws]").forEach(btn => {
+      btn.onclick = () => toggleWorkspace(btn.dataset.ws, btn.dataset.on !== "1");
+    });
+    renderTestWs();
+  } catch(e){ box.innerHTML = "<div class='sub e'>加载失败：" + esc(e) + "</div>"; }
+}
+
+async function toggleWorkspace(id, enabled){
+  try{
+    const j = await post("/workspaces/toggle", { id, enabled });
+    if (j.ok){ workspaces = j.workspaces; await loadWorkspaces(); }
+  } catch(e){}
+}
+
+async function load(){
+  cfg = await get("/config");
+  renderForm();
+  await loadWorkspaces();
+  loadHist();
+}
+function renderTestWs(){
+  const sel = document.getElementById("testWs");
+  const enabled = workspaces.filter(w => w.enabled);
+  if (!enabled.length){
+    sel.innerHTML = "<option value=''>（先启用一个工作区）</option>";
+    return;
+  }
+  const prev = sel.value;
+  sel.innerHTML = enabled.map(w => "<option value='" + esc(w.id) + "'>" + esc(w.title) + "</option>").join("");
+  if (enabled.some(w => w.id === prev)) sel.value = prev;
+}
+
+async function loadHist(){
+  const el = document.getElementById("histInfo");
+  try{
+    const j = await get("/selftest/sessions");
+    const kb = (j.bytes / 1024).toFixed(0);
+    el.innerHTML = j.sessionDirs || j.cacheFiles
+      ? "历史自测会话：<b>" + j.sessionDirs + "</b> 个目录 / " + j.cacheFiles + " 个缓存（" + kb + " KB）"
+      : "历史自测会话：无";
+  } catch(e){ el.textContent = "历史会话读取失败"; }
+}
+
+document.getElementById("cleanBtn").onclick = async () => {
+  const btn = document.getElementById("cleanBtn"); btn.disabled = true;
+  try{
+    const j = await post("/selftest/cleanup", {});
+    const r = j.removed || {};
+    document.getElementById("histInfo").textContent =
+      "已清理：" + (r.dirs || 0) + " 个目录 / " + (r.files || 0) + " 个缓存" + (r.failed && r.failed.length ? "（" + r.failed.length + " 项失败）" : "");
+    loadLogs();
+  } catch(e){ document.getElementById("histInfo").textContent = "清理失败：" + e; }
+  finally{ btn.disabled = false; }
+};
+
+document.getElementById("testBtn").onclick = async () => {
+  const btn = document.getElementById("testBtn"); btn.disabled = true;
+  const out = document.getElementById("testOut");
+  const wsId = document.getElementById("testWs").value;
+  if (!wsId){ out.textContent = "先启用一个工作区。"; btn.disabled = false; return; }
+  out.innerHTML = "<span class='w'>运行中…出题 → 等它派人算 → 数子代理。最长 5 分钟。</span>";
+  document.getElementById("testAt").textContent = "";
+  const t0 = Date.now();
+  try{
+    const r = await fetch(API + "/selftest", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId })
+    });
+    const j = await r.json();
+    document.getElementById("testAt").textContent = "耗时 " + ((Date.now() - t0) / 1000).toFixed(1) + "s";
+    if (!j.ok){
+      out.innerHTML = "<span class='e'>✗ " + esc(j.error || (j.errors || []).join("; ")) + "</span>";
+      return;
+    }
+    const lines = [];
+    lines.push("<span class='" + (j.correct ? "s" : "e") + "'>" + (j.correct ? "✓" : "✗") +
+      " 结果正确（期望 " + j.expected + "，实得 " + j.final + "）</span>");
+    lines.push("<span class='" + (j.verified ? "s" : "e") + "'>" + (j.verified ? "✓" : "✗") +
+      " 独立校验：" + esc(j.verifyNote || "-") + "</span>");
+    lines.push("");
+    lines.push(esc("子代理：" + j.agentsSpawned + " 个（1 幕僚长 + " + j.parallel + " 执行 + 1 校验）"));
+    lines.push(esc("并行批次 " + j.batchMs + "ms ｜ 串行累计 " + j.sumChildrenMs + "ms ｜ 加速比 " + j.speedup));
+    lines.push(esc("总耗时 " + j.totalMs + "ms ｜ 工作区 " + j.workspace));
+    lines.push("");
+    lines.push(esc("中间值：" + JSON.stringify(j.values) + "  符号：" + JSON.stringify(j.signs || [])));
+    lines.push(esc("轨迹："));
+    (j.trace || []).forEach(t => lines.push(esc("  " + t.stage + "  " + t.ms + "ms  " + (t.brief || ""))));
+    out.innerHTML = lines.join("\n");
+    loadHist();
+    loadLogs();
+  } catch(e){ out.innerHTML = "<span class='e'>✗ 请求失败：" + esc(e) + "</span>"; }
+  finally{ btn.disabled = false; }
+};
+
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+async function loadDiag(){
+  const out = document.getElementById("diagOut");
+  try{
+    const j = await get("/diagnostics");
+    const L = [];
+    L.push("plugin      " + j.plugin.name + " " + j.plugin.version);
+    L.push("store       " + j.store);
+    L.push("config      " + j.configPath + (j.configExists ? "  (存在)" : "  (不存在)"));
+    L.push("registry    " + j.workspaceRegistry + (j.workspaceRegistryExists ? "  (存在)" : "  (缺失)"));
+    L.push("mode        installed=" + j.mode.installed + "  section=" + j.mode.section + "  hook=" + j.mode.hook +
+      (j.mode.error ? "  error=" + j.mode.error : ""));
+    L.push("liveAgents  " + (j.liveAgents === null || j.liveAgents === undefined ? "未知" : j.liveAgents) +
+      "（活着的句柄数；面板里的条目含历史会话）");
+    L.push("");
+    L.push("工作区：");
+    for (const w of j.workspaces){
+      L.push("  " + (w.enabled ? "[开]" : "[关]") + " " + w.title + "   resolves=" + w.resolves + "   会话=" + w.sessionCount);
+      L.push("        " + w.path);
+    }
+    L.push("");
+    L.push("编制（上限）：沟通 " + j.config.requirement_gate + "（固定） · 幕僚长 " + j.config.chief +
+      " · PM " + j.config.pm + " · 执行 " + j.config.worker + " · 校验 " + j.config.verifier);
+    L.push("单次拆解上限：" + j.config.max_tasks + " 条（执行数必须 ≤ 它）");
+    L.push("日志：" + j.logCount + " 条");
+    out.innerHTML = esc(L.join("\n"));
+    document.getElementById("diagAt").textContent = "更新于 " + new Date().toLocaleTimeString();
+  } catch(e){ out.innerHTML = "<span class='e'>诊断失败：" + esc(e) + "</span>"; }
+}
+
+async function loadLogs(){
+  const out = document.getElementById("logOut");
+  try{
+    const j = await get("/logs?limit=150");
+    if (!j.rows.length){ out.textContent = "（暂无日志）"; return; }
+    out.innerHTML = j.rows.map(r => {
+      const t = r.t.slice(11, 19);
+      const extra = r.extra ? " " + JSON.stringify(r.extra) : "";
+      return "<span class='t'>" + t + "</span> <span class='lv-" + r.level + "'>[" + r.level + "]</span> " + esc(r.msg + extra);
+    }).join("\n");
+    document.getElementById("logAt").textContent = "共 " + j.total + " 条";
+  } catch(e){ out.innerHTML = "<span class='e'>日志读取失败：" + esc(e) + "</span>"; }
+}
+
+document.getElementById("diagBtn").onclick = loadDiag;
+document.getElementById("logBtn").onclick = loadLogs;
+let logTimer = null;
+document.getElementById("logAuto").onchange = (e) => {
+  if (e.target.checked){ loadLogs(); logTimer = setInterval(loadLogs, 5000); }
+  else if (logTimer){ clearInterval(logTimer); logTimer = null; }
+};
+
+loadDiag();
+loadLogs();
+load();
+</script>
+</body>
+</html>
